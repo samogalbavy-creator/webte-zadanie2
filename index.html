@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="description"
+        content="Prehľad obedového menu reštaurácií v okolí FEI STU."
+    >
+
+    <title>Obedové menu v okolí fakulty</title>
+
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/script.js" defer></script>
+</head>
+
+<body>
+    <header>
+        <h1>Obedové menu v okolí fakulty</h1>
+        <p>Denné menu reštaurácií v okolí FEI STU.</p>
+
+        <nav aria-label="Hlavná navigácia">
+            <ul>
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#o-projekte">O projekte</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="menu" aria-labelledby="menu-heading">
+            <h2 id="menu-heading">Ponuka jedál</h2>
+
+            <div>
+                <button type="button" id="refresh-button">
+                    Aktualizovať menu
+                </button>
+
+                <button type="button" id="clear-button">
+                    Vymazať uložené dáta
+                </button>
+            </div>
+
+            <div role="group" aria-label="Výber dňa">
+                <button type="button" data-day="1">Pondelok</button>
+                <button type="button" data-day="2">Utorok</button>
+                <button type="button" data-day="3">Streda</button>
+                <button type="button" data-day="4">Štvrtok</button>
+                <button type="button" data-day="5">Piatok</button>
+                <button type="button" data-day="all">Celý týždeň</button>
+            </div>
+
+            <p id="status" role="status"></p>
+
+            <div id="menu-container">
+                <p>Tu sa zobrazia menu jednotlivých reštaurácií.</p>
+            </div>
+        </section>
+
+        <section id="o-projekte" aria-labelledby="about-heading">
+            <h2 id="about-heading">O projekte</h2>
+
+            <p>
+                ...
+            </p>
+        </section>
+    </main>
+
+    <footer>
+        <p>©Samuel Galbavý</p>
+    </footer>
+</body>
+</html>
