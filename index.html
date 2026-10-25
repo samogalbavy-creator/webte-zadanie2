@@ -13,6 +13,7 @@
 
     <link rel="stylesheet" href="css/styles.css">
     <script src="js/script.js" defer></script>
+    <link rel="icon" type="image/png" href="favicon.png">
 </head>
 
 <body>
@@ -50,6 +51,40 @@
                 <button type="button" data-day="5">Piatok</button>
                 <button type="button" data-day="all">Celý týždeň</button>
             </div>
+
+            <fieldset class="restaurant-filters">
+                <legend>Zobraziť reštaurácie</legend>
+
+                <label>
+                    <input
+                        type="checkbox"
+                        name="restaurant"
+                        value="Eat &amp; Meet"
+                        checked
+                    >
+                    Eat &amp; Meet
+                </label>
+
+                <label>
+                    <input
+                        type="checkbox"
+                        name="restaurant"
+                        value="DRAG"
+                        checked
+                    >
+                    DRAG
+                </label>
+
+                <label>
+                    <input
+                        type="checkbox"
+                        name="restaurant"
+                        value="Machnáč"
+                        checked
+                    >
+                    Machnáč
+                </label>
+            </fieldset>
 
             <p id="status" role="status"></p>
 

@@ -97,15 +97,37 @@ function renderMenu(menu, selectedDay) {
     const restaurants = [
         {
             name: "Eat & Meet",
-            url: "https://eatandmeet.sk/"
+            url: "https://eatandmeet.sk/",
+            storageKey: "menu-local-eatandmeet"
         },
         {
             name: "DRAG",
-            url: "https://www.restauracia-drag.sk/denne-menu"
+            url: "https://www.restauracia-drag.sk/denne-menu",
+            storageKey: "menu-local-drag"
+        },
+        {
+            name: "Machnáč",
+            url: "https://machnac.sk/denneMenu.html",
+            storageKey: "menu-local-machnac"
         }
     ];
 
+    const selectedRestaurants = Array.from(
+    document.querySelectorAll('input[name="restaurant"]:checked')
+    ).map(function (checkbox) {
+        return checkbox.value;
+    });
+
+    if (selectedRestaurants.length === 0) {
+        container.textContent = "Vyberte aspoň jednu reštauráciu.";
+        return;
+    }
+
     restaurants.forEach(function (restaurant) {
+         if (!selectedRestaurants.includes(restaurant.name)) {
+        return;
+        }
+
         const card = document.createElement("article");
         card.className = "restaurant-card";
 
@@ -116,7 +138,38 @@ function renderMenu(menu, selectedDay) {
         sourceLink.href = restaurant.url;
         sourceLink.textContent = "Pôvodná stránka reštaurácie";
 
-        card.append(heading, sourceLink);
+        const updateInfo = document.createElement("p");
+        updateInfo.className = "restaurant-updated";
+        updateInfo.textContent = "Čas aktualizácie nie je dostupný.";
+
+        try {
+            const storedText = localStorage.getItem(restaurant.storageKey);
+
+            if (storedText) {
+                const storedData = JSON.parse(storedText);
+
+                if (storedData && storedData.updatedAt) {
+                    const updatedAt = new Date(storedData.updatedAt);
+
+                    if (!Number.isNaN(updatedAt.getTime())) {
+                        const time = document.createElement("time");
+
+                        time.dateTime = updatedAt.toISOString();
+                        time.textContent = updatedAt.toLocaleString("sk-SK");
+
+                        updateInfo.replaceChildren(
+                            "Posledná aktualizácia: ",
+                            time
+                        );
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.warn("Čas aktualizácie sa nepodarilo prečítať:", error);
+        }
+
+        card.append(heading, sourceLink, updateInfo);
 
         daysToShow.forEach(function (day) {
             const dayHeading = document.createElement("h4");
@@ -276,44 +329,281 @@ async function loadDrag() {
     }
 }
 
-async function initializeMenu() {
-    const status = document.getElementById("status");
-    status.textContent = "Načítavam menu…";
+async function loadMachnac() {
+    try {
+        const response = await fetch("data/machnac.html");
 
-    const results = await Promise.all([
-        loadEatAndMeet(),
-        loadDrag()
-    ]);
+        if (!response.ok) {
+            throw new Error("Nepodarilo sa načítať súbor Machnáč.");
+        }
 
-    const menu = results.flat();
+        const html = await response.text();
 
-    const today = new Date().getDay();
-    const initialDay = today >= 1 && today <= 5 ? today : 1;
+        const parser = new DOMParser();
+        const documentHTML = parser.parseFromString(html, "text/html");
 
-    renderMenu(menu, initialDay);
+        const dayNames = [
+            "pondelok",
+            "utorok",
+            "streda",
+            "štvrtok",
+            "piatok"
+        ];
 
-    if (results.some(function (items) {
-        return items.length === 0;
-    })) {
-        status.textContent =
-            "Menu niektorej reštaurácie sa nepodarilo získať.";
-    } else {
-        status.textContent = "";
+        const priceTexts = Array.from(
+            documentHTML.querySelectorAll(".denne_menu_ceny h4")
+        ).map(function (element) {
+            return element.textContent.replace(/\s+/g, " ").trim();
+        });
+
+        const soupPrice = priceTexts.find(function (text) {
+            return text.toLowerCase().includes("menu polievka");
+        }) || "Cena neuvedená";
+
+        const mainPrice = priceTexts.find(function (text) {
+            return text.toLowerCase().includes("bez polievky");
+        }) || "Cena neuvedená";
+
+        const elements = documentHTML.querySelectorAll(
+            ".menu-container .item-name h2, " +
+            ".menu-container .item-menu h4"
+        );
+
+        const menu = [];
+
+        let currentDay = null;
+        let mealIndex = 0;
+
+        elements.forEach(function (element) {
+            const text = element.textContent
+                .replace(/\s+/g, " ")
+                .trim();
+
+            if (element.tagName === "H2") {
+                const dayIndex = dayNames.findIndex(function (dayName) {
+                    return text.toLowerCase().startsWith(dayName);
+                });
+
+                currentDay = dayIndex === -1 ? null : dayIndex + 1;
+                mealIndex = 0;
+
+                return;
+            }
+
+            if (currentDay === null || !text.startsWith("(")) {
+                return;
+            }
+
+            const isSoup = mealIndex === 0;
+
+            menu.push({
+                restaurant: "Machnáč",
+                day: currentDay,
+                type: isSoup ? "Polievka" : "Hlavné jedlo",
+                name: text,
+                priceText: isSoup ? soupPrice : mainPrice
+            });
+
+            mealIndex++;
+        });
+
+        if (menu.length === 0) {
+            throw new Error("V HTML Machnáča sa nenašli jedlá.");
+        }
+
+        console.table(menu);
+
+        return menu;
+
+    } catch (error) {
+        console.error("Chyba pri načítaní Machnáča:", error);
+        return [];
+    }
+}
+
+async function loadWithCache(storageKey, loader, forceRefresh = false) {
+    const today = new Date().toDateString();
+
+    try {
+        const storedText = localStorage.getItem(storageKey);
+
+        if (storedText) {
+            const storedData = JSON.parse(storedText);
+
+            if (
+                !forceRefresh &&
+                storedData &&
+                storedData.date === today &&
+                Array.isArray(storedData.menu) &&
+                storedData.menu.length > 0
+            ) {
+                console.log("Používam uložené menu:", storageKey);
+
+                return storedData.menu;
+            }
+        }
+    } catch (error) {
+        console.warn("Uložené menu sa nepodarilo prečítať:", error);
     }
 
+    const menu = await loader();
+
+    if (menu.length > 0) {
+        const dataToStore = {
+            date: today,
+            updatedAt: new Date().toISOString(),
+            menu: menu
+        };
+
+        try {
+            localStorage.setItem(
+                storageKey,
+                JSON.stringify(dataToStore)
+            );
+
+            console.log("Menu bolo uložené:", storageKey);
+
+        } catch (error) {
+            console.warn("Menu sa nepodarilo uložiť:", error);
+        }
+    }
+
+    return menu;
+}
+
+async function initializeMenu() {
+    const status = document.getElementById("status");
+    const container = document.getElementById("menu-container");
+
+    const refreshButton = document.getElementById("refresh-button");
+    const clearButton = document.getElementById("clear-button");
+
     const dayButtons = document.querySelectorAll("button[data-day]");
+
+    const storageKeys = [
+        "menu-local-eatandmeet",
+        "menu-local-drag",
+        "menu-local-machnac"
+    ];
+
+    let menu = [];
+
+    const today = new Date().getDay();
+    let selectedDay = today >= 1 && today <= 5 ? today : 1;
+
+    async function updateMenu(forceRefresh = false) {
+        status.textContent = "Načítavam menu…";
+        container.setAttribute("aria-busy", "true");
+
+        refreshButton.disabled = true;
+        clearButton.disabled = true;
+
+        dayButtons.forEach(function (button) {
+            button.disabled = true;
+        });
+
+        try {
+            const results = await Promise.all([
+                loadWithCache(
+                    storageKeys[0],
+                    loadEatAndMeet,
+                    forceRefresh
+                ),
+                loadWithCache(
+                    storageKeys[1],
+                    loadDrag,
+                    forceRefresh
+                ),
+                loadWithCache(
+                    storageKeys[2],
+                    loadMachnac,
+                    forceRefresh
+                )
+            ]);
+
+            menu = results.flat();
+
+            renderMenu(menu, selectedDay);
+
+            const hasMissingMenu = results.some(function (items) {
+                return items.length === 0;
+            });
+
+            if (hasMissingMenu) {
+                status.textContent =
+                    "Menu niektorej reštaurácie sa nepodarilo získať.";
+            } else {
+                status.textContent = forceRefresh
+                    ? "Menu bolo znovu načítané."
+                    : "";
+            }
+
+        } catch (error) {
+            console.error("Chyba pri aktualizácii:", error);
+
+            status.textContent =
+                "Menu sa nepodarilo aktualizovať. Skúste to znova.";
+
+        } finally {
+            refreshButton.disabled = false;
+            clearButton.disabled = false;
+
+            dayButtons.forEach(function (button) {
+                button.disabled = false;
+            });
+
+            container.setAttribute("aria-busy", "false");
+        }
+    }
 
     dayButtons.forEach(function (button) {
         button.addEventListener("click", function () {
             const value = button.dataset.day;
 
-            const selectedDay = value === "all"
+            selectedDay = value === "all"
                 ? "all"
                 : Number(value);
 
             renderMenu(menu, selectedDay);
         });
     });
+
+    refreshButton.addEventListener("click", function () {
+        updateMenu(true);
+    });
+
+    clearButton.addEventListener("click", function () {
+        try {
+            storageKeys.forEach(function (key) {
+                localStorage.removeItem(key);
+            });
+
+            menu = [];
+
+            renderMenu(menu, selectedDay);
+
+            status.textContent =
+                "Uložené dáta boli vymazané. Menu načítate tlačidlom Aktualizovať menu.";
+
+        } catch (error) {
+            console.error("Chyba pri vymazávaní:", error);
+
+            status.textContent =
+                "Uložené dáta sa nepodarilo úplne vymazať.";
+        }
+    });
+
+    const restaurantCheckboxes = document.querySelectorAll(
+    'input[name="restaurant"]'
+    );
+
+    restaurantCheckboxes.forEach(function (checkbox) {
+        checkbox.addEventListener("change", function () {
+            renderMenu(menu, selectedDay);
+        });
+    });
+    
+    await updateMenu();
 }
 
 initializeMenu();
