@@ -173,7 +173,14 @@ function renderMenu(menu, selectedDay) {
 
         daysToShow.forEach(function (day) {
             const dayHeading = document.createElement("h4");
-            dayHeading.textContent = dayNames[day - 1];
+            const datedMeal = menu.find(function (meal) {
+            return meal.restaurant === restaurant.name &&
+                meal.day === day &&
+                meal.dateText;
+            });
+
+            dayHeading.textContent = dayNames[day - 1] +
+            (datedMeal ? " " + datedMeal.dateText : "");
 
             card.append(dayHeading);
 
@@ -193,19 +200,47 @@ function renderMenu(menu, selectedDay) {
 
             filteredMenu.forEach(function (meal) {
                 const item = document.createElement("div");
-                item.className = "meal";
+                const isSoup = meal.type.toLowerCase().includes("polievka");
+                item.className = isSoup
+                    ? "meal meal--soup"
+                    : "meal meal--dish";
 
                 const type = document.createElement("p");
                 type.className = "meal__type";
                 type.textContent = meal.type;
 
                 const name = document.createElement("p");
+                name.className = "meal__name";
                 name.textContent = meal.name;
 
                 const price = document.createElement("strong");
+                price.className = "meal__price";
                 price.textContent = meal.priceText;
 
-                item.append(type, name, price);
+                const allergens = document.createElement("p");
+                allergens.className = "meal__allergens";
+
+                if (
+                    Array.isArray(meal.allergens) &&
+                    meal.allergens.length > 0
+                ) {
+                    allergens.textContent =
+                        "Alergény: " + meal.allergens.join(", ");
+                } else {
+                    allergens.textContent = "Alergény: údaj nie je dostupný.";
+                }
+
+                item.append(type, name);
+
+                if (meal.portionText) {
+                    const portion = document.createElement("p");
+                    portion.className = "meal__portion";
+                    portion.textContent = "Porcia: " + meal.portionText;
+
+                    item.append(portion);
+                }
+
+                item.append(allergens, price);
                 card.append(item);
             });
         });
@@ -372,6 +407,7 @@ async function loadMachnac() {
         const menu = [];
 
         let currentDay = null;
+        let currentDateText = null;
         let mealIndex = 0;
 
         elements.forEach(function (element) {
@@ -385,6 +421,13 @@ async function loadMachnac() {
                 });
 
                 currentDay = dayIndex === -1 ? null : dayIndex + 1;
+
+                const dateMatch = text.match(
+                    /\d{1,2}\.\s*\d{1,2}\.(?:\s*\d{4})?/
+                );
+
+                currentDateText = dateMatch ? dateMatch[0].trim() : null;
+
                 mealIndex = 0;
 
                 return;
@@ -399,6 +442,7 @@ async function loadMachnac() {
             menu.push({
                 restaurant: "Machnáč",
                 day: currentDay,
+                dateText: currentDateText,
                 type: isSoup ? "Polievka" : "Hlavné jedlo",
                 name: text,
                 priceText: isSoup ? soupPrice : mainPrice
@@ -419,6 +463,82 @@ async function loadMachnac() {
         console.error("Chyba pri načítaní Machnáča:", error);
         return [];
     }
+}
+
+function separateAllergens(meal) {
+    const patterns = {
+        "Eat & Meet": /\s*\((\d+(?:\s*,\s*\d+)*)\)\s*$/,
+        "DRAG": /\s*\/\s*(\d+(?:\s*,\s*\d+)*)\s*\/\s*$/,
+        "Machnáč": /\s+(\d+(?:\s*,\s*\d+)*)\s*$/
+    };
+
+    const pattern = patterns[meal.restaurant];
+
+    const match = pattern
+        ? meal.name.match(pattern)
+        : null;
+
+    if (!match) {
+        return {
+            ...meal,
+            allergens: null
+        };
+    }
+
+    const allergens = match[1].split(",").map(function (value) {
+        return Number(value.trim());
+    });
+
+    const name = meal.name.slice(0, match.index).trim();
+
+    return {
+        ...meal,
+        name: name,
+        allergens: allergens
+    };
+}
+
+function separatePortion(meal) {
+    const patterns = [
+        /^\(\s*(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)*)\s*(kg|g|ml|cl|dl|l)\s*\)\s*/i,
+        /^(\d+(?:[.,]\d+)?\s*(?:kg|g|ml|cl|dl|l)(?:\s*\/\s*\d+(?:[.,]\d+)?\s*(?:kg|g|ml|cl|dl|l))*)\s+/i,
+        /^(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)*)\s*(kg|g|ml|cl|dl|l)\s+/i
+    ];
+
+    for (const pattern of patterns) {
+        const match = meal.name.match(pattern);
+
+        if (!match) {
+            continue;
+        }
+
+        const name = meal.name.slice(match[0].length).trim();
+
+        if (!name) {
+            continue;
+        }
+
+        const portion = match[2]
+            ? match[1] + match[2]
+            : match[1];
+
+        const portionText = portion
+            .replace(/\s+/g, "")
+            .replace(/(kg|g|ml|cl|dl|l)/gi, " $1")
+            .replace(/\//g, " / ")
+            .toLowerCase();
+
+        return {
+            ...meal,
+            name: name,
+            portionText: portionText
+        };
+    }
+
+    return {
+        ...meal,
+        portionText: null
+    };
 }
 
 async function loadWithCache(storageKey, loader, forceRefresh = false) {
@@ -446,7 +566,9 @@ async function loadWithCache(storageKey, loader, forceRefresh = false) {
         console.warn("Uložené menu sa nepodarilo prečítať:", error);
     }
 
-    const menu = await loader();
+    const menu = (await loader())
+        .map(separateAllergens)
+        .map(separatePortion);
 
     if (menu.length > 0) {
         const dataToStore = {
@@ -593,14 +715,8 @@ async function initializeMenu() {
         }
     });
 
-    const restaurantCheckboxes = document.querySelectorAll(
-    'input[name="restaurant"]'
-    );
-
-    restaurantCheckboxes.forEach(function (checkbox) {
-        checkbox.addEventListener("change", function () {
-            renderMenu(menu, selectedDay);
-        });
+    $('input[name="restaurant"]').on("change", function () {
+    renderMenu(menu, selectedDay);
     });
     
     await updateMenu();

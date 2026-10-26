@@ -139,8 +139,10 @@ footer p {
 }
 
 .meal {
-    padding: 16px 0;
-    border-bottom: 1px solid #dce2eb;
+    margin-top: 12px;
+    padding: 16px;
+    border: 1px solid #dce2eb;
+    border-radius: 8px;
 }
 
 .meal p {
@@ -197,6 +199,38 @@ button:disabled {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.meal--soup {
+    background-color: #fff7e6;
+    border-left: 4px solid #b86b00;
+}
+
+.meal--dish {
+    background-color: #f1f6fc;
+    border-left: 4px solid #244a73;
+}
+
+.meal__name {
+    font-weight: 600;
+}
+
+.meal__price {
+    display: block;
+    margin-top: 8px;
+    font-size: 1.05rem;
+    color: #184c36;
+    font-variant-numeric: tabular-nums;
+}
+
+.meal__allergens {
+    font-size: 0.85rem;
+    color: #526078;
+}
+
+.meal__portion {
+    font-size: 0.9rem;
+    color: #526078;
 }
 
 @media (max-width: 600px) {

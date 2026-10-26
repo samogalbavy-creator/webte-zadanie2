@@ -11,13 +11,30 @@
 
     <title>Obedové menu v okolí fakulty</title>
 
+    <!-- Bootstrap CSS -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+        crossorigin="anonymous"
+    >
+
     <link rel="stylesheet" href="css/styles.css">
+
+    <!-- jQuery -->
+    <script
+        src="https://code.jquery.com/jquery-3.7.1.min.js"
+        defer
+    ></script>
+
+    
     <script src="js/script.js" defer></script>
     <link rel="icon" type="image/png" href="favicon.png">
 </head>
 
 <body>
     <header>
+        <img src="favicon.png" alt="" width="48" height="48">
         <h1>Obedové menu v okolí fakulty</h1>
         <p>Denné menu reštaurácií v okolí FEI STU.</p>
 
@@ -34,11 +51,19 @@
             <h2 id="menu-heading">Ponuka jedál</h2>
 
             <div>
-                <button type="button" id="refresh-button">
+                <button
+                    type="button"
+                    id="refresh-button"
+                    class="btn btn-primary"
+                >
                     Aktualizovať menu
                 </button>
 
-                <button type="button" id="clear-button">
+                <button
+                    type="button"
+                    id="clear-button"
+                    class="btn btn-outline-danger"
+                >
                     Vymazať uložené dáta
                 </button>
             </div>
@@ -96,9 +121,47 @@
         <section id="o-projekte" aria-labelledby="about-heading">
             <h2 id="about-heading">O projekte</h2>
 
+            <h3>Zdroje menu</h3>
+
+            <ul>
+                <li><a href="https://eatandmeet.sk/">Eat &amp; Meet</a></li>
+                <li>
+                    <a href="https://www.restauracia-drag.sk/denne-menu">
+                        DRAG
+                    </a>
+                </li>
+                <li>
+                    <a href="https://machnac.sk/denneMenu.html">Machnáč</a>
+                </li>
+            </ul>
+
+            <h3>Spracovanie údajov</h3>
+
             <p>
-                ...
+                Aplikácia načítava lokálne HTML kópie pomocou Fetch API.
+                Údaje vyberá pomocou DOMParser a DOM selektorov a prevádza
+                ich do spoločnej štruktúry. Spracované menu sa ukladá
+                do localStorage. Aktualizácia opätovne spracuje lokálne kópie.
             </p>
+
+            <h3>Použité knižnice a grafika</h3>
+
+            <ul>
+                <li>
+                    <a href="https://getbootstrap.com/">Bootstrap 5.3.8</a>
+                    – štýlovanie tlačidiel.
+                </li>
+                <li>
+                    <a href="https://jquery.com/">jQuery 3.7.1</a>
+                    – obsluha filtrov reštaurácií.
+                </li>
+                <li>
+                    Ikona taniera s príborom: Microsoft Fluent Emoji,
+                    <a href="https://www.iconarchive.com/show/fluentui-emoji-flat-icons-by-microsoft/Fork-And-Knife-With-Plate-Flat-icon.html">
+                        zdroj IconArchive
+                    </a>.
+                </li>
+            </ul>
         </section>
     </main>
 
